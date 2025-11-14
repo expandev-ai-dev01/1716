@@ -14,12 +14,14 @@ export enum ExpectedReturn {
  * @param routine The name of the stored procedure to execute (e.g., '[schema].[spName]').
  * @param parameters An object containing the parameters for the stored procedure.
  * @param expectedReturn The expected return type from the procedure.
+ * @param resultSetNames Optional array of names to map to the result sets when using ExpectedReturn.Multi.
  * @returns The result from the database, formatted based on expectedReturn.
  */
 export async function dbRequest(
   routine: string,
   parameters: object,
-  expectedReturn: ExpectedReturn
+  expectedReturn: ExpectedReturn,
+  resultSetNames?: string[]
 ): Promise<any> {
   try {
     const pool = await getDbPool();
@@ -35,6 +37,15 @@ export async function dbRequest(
       case ExpectedReturn.Single:
         return result.recordset && result.recordset.length > 0 ? result.recordset[0] : null;
       case ExpectedReturn.Multi:
+        if (resultSetNames && resultSetNames.length > 0) {
+          const namedResultSets: { [key: string]: IRecordSet<any> } = {};
+          result.recordsets.forEach((recordset, index) => {
+            if (resultSetNames[index]) {
+              namedResultSets[resultSetNames[index]] = recordset;
+            }
+          });
+          return namedResultSets;
+        }
         return result.recordsets;
       case ExpectedReturn.None:
         return;
